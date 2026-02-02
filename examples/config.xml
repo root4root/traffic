@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+    <map_size>1024</map_size>
+    <nflog_group>11</nflog_group>
+    <vpn_ip>0x0A0A0A0A</vpn_ip>
+    <internal_net>0xC0A80000</internal_net>
+    <internal_mask>0xFFFF0000</internal_mask>
+    <input_mark>0x1</input_mark>
+    <output_mark>0x2</output_mark>
+</config>
