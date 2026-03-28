@@ -7,23 +7,25 @@ import (
 	"os/signal"
 	"slices"
 	"syscall"
+
+	"github.com/root4root/traffic/internal"
 )
 
-var cfg Config
+var cfg internal.Config
 
 func main() {
 	cfgPath := flag.String("cfg", "config.xml", "path to xml config file")
 	flag.Parse()
 
 	var err error
-	cfg, err = LoadConfig(*cfgPath)
+	err = internal.LoadConfig(*cfgPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
 		os.Exit(1)
 	}
 
 	go sigHandler()
-	nfinit()
+	internal.Nfinit()
 }
 
 func sigHandler() {
@@ -35,9 +37,9 @@ func sigHandler() {
 
 		fmt.Println("\n------------------------------------------------------")
 
-		slices.SortFunc(stats, func(a, b *statunit) int {
-			suma := a.srcdst + a.dstsrc
-			sumb := b.srcdst + b.dstsrc
+		slices.SortFunc(internal.Stats, func(a, b *internal.Statunit) int {
+			suma := a.Srcdst + a.Dstsrc
+			sumb := b.Srcdst + b.Dstsrc
 
 			if suma > sumb {
 				return 1
@@ -50,23 +52,23 @@ func sigHandler() {
 			return 0
 		})
 
-		for _, u := range stats {
+		for _, u := range internal.Stats {
 			fmt.Fprintf(os.Stdout, "%s (%d) (<- %.2f : MiB (%d pkts) : %.2f ->) %s (%d) [LP SRC: %s, DST: %s, INDEV: %d, OUTDEV: %d]\n",
-				inetNtoaFast(u.srcIP),
-				u.srcIP,
-				float64(u.dstsrc)/1048576,
-				u.pktCount,
-				float64(u.srcdst)/1048576,
-				inetNtoaFast(u.dstIP),
-				u.dstIP,
-				inetNtoaFast(u.lastPktRealSrc),
-				inetNtoaFast(u.lastPktRealDst),
-				u.inDev,
-				u.outDev,
+				internal.InetNtoaFast(u.SrcIP),
+				u.SrcIP,
+				float64(u.Dstsrc)/1048576,
+				u.PktCount,
+				float64(u.Srcdst)/1048576,
+				internal.InetNtoaFast(u.DstIP),
+				u.DstIP,
+				internal.InetNtoaFast(u.LastPktRealSrc),
+				internal.InetNtoaFast(u.LastPktRealDst),
+				u.InDev,
+				u.OutDev,
 			)
 		}
 
-		fmt.Printf("\nThe slice LEN: %d, CAP: %d\n", len(stats), cap(stats))
+		fmt.Printf("\nThe slice LEN: %d, CAP: %d\n", len(internal.Stats), cap(internal.Stats))
 
 	}
 }

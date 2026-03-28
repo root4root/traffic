@@ -1,4 +1,4 @@
-module traffic
+module github.com/root4root/traffic
 
 go 1.25.5
 

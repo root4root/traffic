@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"encoding/xml"
@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 )
+
+var CurrentCfg Config
 
 type Config struct {
 	MapSize       uint32
@@ -48,7 +50,7 @@ func (h *HexUint32) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	return nil
 }
 
-func LoadConfig(path string) (cfg Config, err error) {
+func LoadConfig(path string) (err error) {
 	content, freadErr := os.ReadFile(path)
 	if freadErr != nil {
 		err = fmt.Errorf("failed to read config file: %v", freadErr)
@@ -63,7 +65,7 @@ func LoadConfig(path string) (cfg Config, err error) {
 		return
 	}
 
-	cfg = Config{
+	CurrentCfg = Config{
 		MapSize:       hexCfg.MapSize,
 		NflogGroup:    hexCfg.NflogGroup,
 		VPNIP:         uint32(hexCfg.VPNIP),
