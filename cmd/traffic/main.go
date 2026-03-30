@@ -7,30 +7,29 @@ import (
 	"os/signal"
 	"slices"
 	"syscall"
+	"time"
 
 	"github.com/root4root/traffic/internal"
 )
-
-var cfg internal.Config
 
 func main() {
 	cfgPath := flag.String("cfg", "config.xml", "path to xml config file")
 	flag.Parse()
 
-	var err error
-	err = internal.LoadConfig(*cfgPath)
-	if err != nil {
+	if err := internal.LoadConfig(*cfgPath); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
 		os.Exit(1)
 	}
 
 	go sigHandler()
-	internal.Nfinit()
+	internal.NflogInit()
 }
 
 func sigHandler() {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGHUP)
+
+	uptime := time.Now()
 
 	for {
 		<-signals
@@ -68,7 +67,7 @@ func sigHandler() {
 			)
 		}
 
-		fmt.Printf("\nThe slice LEN: %d, CAP: %d\n", len(internal.Stats), cap(internal.Stats))
+		fmt.Printf("\nThe slice LEN: %d, CAP: %d, UP: %s\n", len(internal.Stats), cap(internal.Stats), time.Since(uptime).String())
 
 	}
 }

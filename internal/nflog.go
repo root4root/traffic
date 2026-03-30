@@ -27,6 +27,54 @@ type Statunit struct {
 	PktCount       uint64
 }
 
+func NflogInit() {
+	nfcfg := nflog.Config{
+		Group:    CurrentCfg.NflogGroup,
+		Copymode: nflog.CopyPacket,
+	}
+
+	nf, err := nflog.Open(&nfcfg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "could not open nflog socket:", err)
+		return
+	}
+	defer nf.Close()
+
+	// Increase socket read buffer size to 512kB.
+	if err := nf.Con.SetReadBuffer(512 * 1024); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to set read buffer: %v", err)
+		return
+	}
+
+	// Avoid receiving ENOBUFS errors.
+	if err := nf.SetOption(netlink.NoENOBUFS, true); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to set netlink option %v: %v\n",
+			netlink.NoENOBUFS, err)
+		return
+	}
+
+	ctx := context.Background()
+
+	// errFunc that is called for every error on the registered hook
+	errFunc := func(e error) int {
+		// Just log the error and return 0 to continue receiving packets
+		fmt.Fprintf(os.Stderr, "received error on hook: %v\n", e)
+		return 0
+	}
+
+	Statm = make(map[uint64]*Statunit, CurrentCfg.MapSize)
+	Stats = make([]*Statunit, 0, CurrentCfg.MapSize)
+
+	// Register your function to listen on nflog group 100
+	err = nf.RegisterWithErrorFunc(ctx, hook, errFunc)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to register hook function: %v\n", err)
+		return
+	}
+
+	<-ctx.Done()
+}
+
 func hook(attrs nflog.Attribute) int {
 	src := binary.BigEndian.Uint32((*attrs.Payload)[12:16])
 	dst := binary.BigEndian.Uint32((*attrs.Payload)[16:20])
@@ -98,65 +146,4 @@ func hook(attrs nflog.Attribute) int {
 	unit.OutDev = temp.OutDev
 	unit.PktCount++
 	return 0
-}
-
-func InetNtoaFast(n uint32) string {
-	if n == CurrentCfg.VPNIP {
-		return "VPN-SERVER"
-	}
-
-	if n == 0 {
-		return "INTERNET"
-	}
-
-	return fmt.Sprintf("%d.%d.%d.%d",
-		byte(n>>24), byte(n>>16), byte(n>>8), byte(n))
-}
-
-func Nfinit() {
-	nfcfg := nflog.Config{
-		Group:    CurrentCfg.NflogGroup,
-		Copymode: nflog.CopyPacket,
-	}
-
-	nf, err := nflog.Open(&nfcfg)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "could not open nflog socket:", err)
-		return
-	}
-	defer nf.Close()
-
-	// Increase socket read buffer size to 512kB.
-	if err := nf.Con.SetReadBuffer(512 * 1024); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to set read buffer: %v", err)
-		return
-	}
-
-	// Avoid receiving ENOBUFS errors.
-	if err := nf.SetOption(netlink.NoENOBUFS, true); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to set netlink option %v: %v",
-			netlink.NoENOBUFS, err)
-		return
-	}
-
-	ctx := context.Background()
-
-	// errFunc that is called for every error on the registered hook
-	errFunc := func(e error) int {
-		// Just log the error and return 0 to continue receiving packets
-		fmt.Fprintf(os.Stderr, "received error on hook: %v", e)
-		return 0
-	}
-
-	Statm = make(map[uint64]*Statunit, CurrentCfg.MapSize)
-	Stats = make([]*Statunit, 0, CurrentCfg.MapSize)
-
-	// Register your function to listen on nflog group 100
-	err = nf.RegisterWithErrorFunc(ctx, hook, errFunc)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to register hook function: %v", err)
-		return
-	}
-
-	<-ctx.Done()
 }
